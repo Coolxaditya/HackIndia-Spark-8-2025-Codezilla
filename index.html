@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Validation and Fund Transfer</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+        #result {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>NFT Validation and Fund Transfer</h1>
+
+    <div>
+        <input type="file" id="image-upload" accept="image/*" />
+        <button id="validate-btn">Validate NFT</button>
+    </div>
+
+    <div id="result"></div>
+
+    <div id="wallet-section" style="display:none;">
+        <label for="wallet-address">Enter your Ethereum wallet address:</label>
+        <input type="text" id="wallet-address" placeholder="0x..." />
+        <button id="send-funds-btn">Claim NFT and Receive Funds</button>
+    </div>
+
+    <script>
+        const validateBtn = document.getElementById('validate-btn');
+        const walletSection = document.getElementById('wallet-section');
+        const resultDiv = document.getElementById('result');
+        const sendFundsBtn = document.getElementById('send-funds-btn');
+        const walletAddressInput = document.getElementById('wallet-address');
+        let nftData = null;
+
+        // Function to read image and send it to backend for QR decoding and validation
+        async function validateNFT(imageFile) {
+            const formData = new FormData();
+            formData.append("image", imageFile);
+
+            try {
+                const response = await fetch('http://localhost:5000/validate-nft', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    var nftData = data;
+                    resultDiv.innerHTML = `✅ NFT is VALID. Token ID: ${data.tokenId} | URI: ${data.tokenURI}`;
+                    walletSection.style.display = 'block';
+                } else {
+                    resultDiv.innerHTML = `❌ NFT is INVALID. Token ID: ${data.tokenId} | URI: ${data.tokenURI}`;
+                    walletSection.style.display = 'none';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `Error validating NFT: ${error.message}`;
+            }
+        }
+
+        // Function to send funds to user's Ethereum address
+        async function sendFunds(userAddress) {
+            const web3 = new Web3(window.ethereum);
+            try {
+                const accounts = await web3.eth.requestAccounts();
+                const fromAddress = accounts[0];
+
+                // Call your backend to initiate the transfer of funds (dummy example here)
+                const response = await fetch('http://localhost:3000/send-funds', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userAddress,
+                        amountInEther: '0.00001',
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    resultDiv.innerHTML = `Funds successfully sent to ${userAddress}.`;
+                } else {
+                    resultDiv.innerHTML = `Error sending funds.`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        // Handle NFT validation on file upload
+        validateBtn.addEventListener('click', () => {
+            const imageFile = document.getElementById('image-upload').files[0];
+            if (imageFile) {
+                validateNFT(imageFile);
+            } else {
+                alert('Please upload an image.');
+            }
+        });
+
+        // Handle sending funds when user enters wallet address
+        sendFundsBtn.addEventListener('click', () => {
+            const userAddress = walletAddressInput.value.trim();
+            if (userAddress && userAddress.length === 42 && userAddress.startsWith("0x")) {
+                sendFunds(userAddress);
+            } else {
+                alert('Invalid wallet address format. Please enter a valid Ethereum address.');
+            }
+        });
+    </script>
+</body>
+</html>
